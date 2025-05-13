@@ -1,0 +1,29 @@
+openapi: 3.0.0
+info:
+  title: Account Service API
+  version: 1.0.0
+paths:
+  /api/accounts:
+    post:
+      summary: Crear una cuenta bancaria
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Account'
+      responses:
+        '201':
+          description: Cuenta creada
+components:
+  schemas:
+    Account:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [ SAVINGS, CHECKING, FIXED_TERM ]
+        initialBalance:
+          type: number
+        customerId:
+          type: string
