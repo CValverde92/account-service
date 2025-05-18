@@ -1,13 +1,13 @@
 package com.nttdatabank.account_service.service.impl;
 
-import com.nttdatabank.account_service.dto.AccountRequest;
-import com.nttdatabank.account_service.dto.AccountResponse;
 import com.nttdatabank.account_service.exception.BusinessException;
 import com.nttdatabank.account_service.model.Account;
 import com.nttdatabank.account_service.model.AccountType;
 import com.nttdatabank.account_service.repository.AccountRepository;
 import com.nttdatabank.account_service.service.AccountService;
-import com.nttdatabank.account_service.validation.AccountValidation;
+import com.nttdatabank.model.AccountRequest;
+import com.nttdatabank.model.AccountResponse;
+import com.nttdatabank.model.AccountUpdateRequest;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
 import org.springframework.http.HttpStatus;
@@ -17,17 +17,16 @@ import reactor.core.publisher.Mono;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.util.List;
 
 @Service
 @RequiredArgsConstructor
 public class AccountServiceImpl implements AccountService {
 
     private final AccountRepository accountRepository;
-    private final List<AccountValidation> accountValidations;
     private final ModelMapper modelMapper;
     private static final int MAX_MONTHLY_MOVEMENTS = 3;
 
+    @Override
     public Mono<AccountResponse> create(AccountRequest request) {
         return validateAccountCreation(request)
                 .flatMap(validatedRequest -> {
@@ -52,7 +51,7 @@ public class AccountServiceImpl implements AccountService {
     }
 
     @Override
-    public Mono<AccountResponse> update(String id, AccountRequest request) {
+    public Mono<AccountResponse> update(String id, AccountUpdateRequest request) {
         return accountRepository.findById(id)
                 .switchIfEmpty(Mono.error(new BusinessException("Cuenta no encontrada", HttpStatus.NOT_FOUND)))
                 .flatMap(existeAccount -> {
@@ -109,9 +108,10 @@ public class AccountServiceImpl implements AccountService {
      */
 
     private Mono<AccountRequest> validateAccountCreation(AccountRequest request) {
-        return accountRepository.existsByCustomerIdAndType(request.getCustomerId(), request.getType())
+        return accountRepository.existsByCustomerIdAndType(request.getCustomerId().toString(),
+                        AccountType.valueOf(request.getType().name()))
                 .flatMap(existe -> {
-                    if (existe && request.getType() != AccountType.CHECKING) {
+                    if (existe && AccountType.valueOf(request.getType().name()) != AccountType.CHECKING) {
                         return Mono.error(new BusinessException("Cliente ya tiene una cuenta de este tipo", HttpStatus.BAD_REQUEST));
                     }
                     return Mono.just(request);

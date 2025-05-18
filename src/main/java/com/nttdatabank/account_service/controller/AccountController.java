@@ -1,75 +1,85 @@
 package com.nttdatabank.account_service.controller;
 
-import com.nttdatabank.account_service.dto.AccountRequest;
-import com.nttdatabank.account_service.dto.AccountResponse;
-import com.nttdatabank.account_service.dto.TransactionRequest;
 import com.nttdatabank.account_service.service.AccountService;
+import com.nttdatabank.api.AccountsApi;
+import com.nttdatabank.model.AccountRequest;
+import com.nttdatabank.model.AccountResponse;
+import com.nttdatabank.model.AccountUpdateRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import javax.validation.Valid;
-import java.math.BigDecimal;
+import javax.validation.ValidationException;
+import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/accounts")
 @RequiredArgsConstructor
-public class AccountController {
-
-    //Dependency injection
+public class AccountController implements AccountsApi {
     private final AccountService accountService;
 
-    @PostMapping
-    @ResponseStatus(HttpStatus.CREATED)
-    public Mono<AccountResponse> create(
-            @Valid @RequestBody AccountRequest request) {
-        return accountService.create(request);
+    @Override
+    public Mono<ResponseEntity<AccountResponse>> createAccount(
+            @Valid @RequestBody Mono<AccountRequest> accountRequest,
+            final ServerWebExchange exchange) {
+        return accountRequest
+                .flatMap(accountService::create)
+                .map(response -> ResponseEntity
+                        .status(HttpStatus.CREATED)
+                        .body(response))
+                .onErrorResume(e -> {
+                    if (e instanceof ValidationException) {
+                        return Mono.just(ResponseEntity.badRequest().build());
+                    }
+                    return Mono.just(ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build());
+                });
     }
 
-    @GetMapping
-    public Flux<AccountResponse> getAll() {
-        return accountService.findAll();
+
+    @Override
+    public Mono<ResponseEntity<Void>> deleteAccount(
+            @PathVariable("id") UUID id,
+            final ServerWebExchange exchange) {
+        return accountService.delete(id.toString())
+                .thenReturn(ResponseEntity.noContent().build());
     }
 
-    @GetMapping("/{id}")
-    public Mono<AccountResponse> getById(@PathVariable String id) {
-        return accountService.findById(id);
+    @Override
+    public Mono<ResponseEntity<AccountResponse>> getAccountById(
+            @PathVariable("id") UUID id,
+            final ServerWebExchange exchange) {
+        return accountService.findById(id.toString())
+                .map(ResponseEntity::ok)
+                .defaultIfEmpty(ResponseEntity.notFound().build());
     }
 
-    @PutMapping("/{id}")
-    public Mono<AccountResponse> update(
-            @PathVariable String id,
-            @Valid @RequestBody AccountRequest request) {
-        return accountService.update(id, request);
+    @Override
+    public Mono<ResponseEntity<Flux<AccountResponse>>> listAccounts(
+            final ServerWebExchange exchange) {
+        return Mono.just(ResponseEntity.ok(accountService.findAll()));
     }
 
-    @DeleteMapping("/{id}")
-    public Mono<Void> delete(@PathVariable String id) {
-        return accountService.delete(id);
-    }
-
-    /**
-     * Banking operations
-     * */
-
-    @PostMapping("/{id}/deposit")
-    public Mono<AccountResponse> deposit(
-            @PathVariable String id,
-            @Valid @RequestBody TransactionRequest request) {
-        return accountService.deposit(id, request.getAmount());
-    }
-
-    @PostMapping("/{id}/withdraw")
-    public Mono<AccountResponse> withdraw(
-            @PathVariable String id,
-            @Valid @RequestBody TransactionRequest request) {
-        return accountService.withdraw(id, request.getAmount());
-    }
-
-    @GetMapping("/{id}/balance")
-    public Mono<BigDecimal> getBalance(@PathVariable String id) {
-        return accountService.getBalance(id);
+    @Override
+    public Mono<ResponseEntity<AccountResponse>> updateAccount(
+            @PathVariable("id") UUID id,
+            @Valid @RequestBody Mono<AccountUpdateRequest> accountUpdateRequest,
+            final ServerWebExchange exchange) {
+        return accountUpdateRequest
+                .flatMap(request -> {
+                    if (request.getBalance() != null && request.getBalance() < 0) {
+                        return Mono.error(new IllegalArgumentException("Balance cannot be negative"));
+                    }
+                    return accountService.update(id.toString(), request);
+                })
+                .map(ResponseEntity::ok)
+                .defaultIfEmpty(ResponseEntity.notFound().build())
+                .onErrorResume(IllegalArgumentException.class, e ->
+                        Mono.just(ResponseEntity.badRequest().build()));
     }
 }

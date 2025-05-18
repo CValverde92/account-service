@@ -1,0 +1,246 @@
+openapi: 3.0.1
+info:
+  title: Account Service API
+  description: Basic CRUD API for bank account management
+  version: 1.0.0
+servers:
+  - url: http://localhost:8080/api
+    description: Local development server
+
+tags:
+  - name: accounts
+    description: Account CRUD operations
+
+paths:
+  /accounts:
+    post:
+      tags: [ accounts ]
+      summary: Create a new account
+      description: Creates a new bank account
+      operationId: createAccount
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AccountRequest'
+      responses:
+        '201':
+          description: Account created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountResponse'
+        '400':
+          description: Invalid request
+
+    get:
+      tags: [ accounts ]
+      summary: List all accounts
+      description: Returns a list of all accounts
+      operationId: listAccounts
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AccountResponse'
+
+  /accounts/{id}:
+    get:
+      tags: [ accounts ]
+      summary: Get account by ID
+      description: Returns a single account
+      operationId: getAccountById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountResponse'
+        '404':
+          description: Account not found
+
+    put:
+      tags: [ accounts ]
+      summary: Update an account
+      description: Updates an existing account
+      operationId: updateAccount
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AccountUpdateRequest'
+      responses:
+        '200':
+          description: Account updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountResponse'
+        '400':
+          description: Invalid request
+        '404':
+          description: Account not found
+
+    delete:
+      tags: [ accounts ]
+      summary: Delete an account
+      description: Deletes an existing account
+      operationId: deleteAccount
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Account deleted successfully
+        '404':
+          description: Account not found
+
+components:
+  schemas:
+    AccountRequest:
+      type: object
+      required:
+        - customerId
+        - type
+        - balance
+      properties:
+        customerId:
+          type: string
+          format: uuid
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        type:
+          type: string
+          enum: [ CHECKING, SAVINGS, FIXED_TERM ]
+          example: "CHECKING"
+        balance:
+          type: number
+          format: double
+          minimum: 0
+          example: 1000.50
+        fixedTermWithdrawalDate:
+          type: string
+          format: date
+          example: "2025-05-18"
+        monthlyMovements:
+          type: integer
+          example: 3
+        maintenanceFee:
+          type: number
+          format: double
+          example: 10.00
+
+    AccountUpdateRequest:
+      type: object
+      properties:
+        balance:
+          type: number
+          format: double
+          minimum: 0
+          example: 1500.75
+        active:
+          type: boolean
+          example: true
+        fixedTermWithdrawalDate:
+          type: string
+          format: date
+          example: "2025-05-18"
+        monthlyMovements:
+          type: integer
+          example: 3
+        maintenanceFee:
+          type: number
+          format: double
+          example: 10.00
+
+    AccountResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: "550e8400-e29b-41d4-a716-446655440001"
+        customerId:
+          type: string
+          format: uuid
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        type:
+          type: string
+          enum: [ CHECKING, SAVINGS, FIXED_TERM ]
+          example: "CHECKING"
+        balance:
+          type: number
+          format: double
+          example: 1000.50
+        active:
+          type: boolean
+          example: true
+        fixedTermWithdrawalDate:
+          type: string
+          format: date
+          example: "2025-05-18"
+        monthlyMovements:
+          type: integer
+          example: 3
+        maintenanceFee:
+          type: number
+          format: double
+          example: 10.00
+
+    Account:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        customerId:
+          type: string
+          format: uuid
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        type:
+          type: string
+          enum: [ CHECKING, SAVINGS, FIXED_TERM ]
+          example: "CHECKING"
+        balance:
+          type: number
+          format: double
+          example: 1000.50
+        active:
+          type: boolean
+          example: true
+        fixedTermWithdrawalDate:
+          type: string
+          format: date
+          example: "2025-05-18"
+        monthlyMovements:
+          type: integer
+          example: 3
+        maintenanceFee:
+          type: number
+          format: double
+          example: 10.00
