@@ -1,10 +1,10 @@
 package com.nttdatabank.account_service.controller;
 
+import com.nttdatabank.account_service.api.AccountsApi;
+import com.nttdatabank.account_service.model.AccountRequest;
+import com.nttdatabank.account_service.model.AccountResponse;
+import com.nttdatabank.account_service.model.AccountUpdateRequest;
 import com.nttdatabank.account_service.service.AccountService;
-import com.nttdatabank.api.AccountsApi;
-import com.nttdatabank.model.AccountRequest;
-import com.nttdatabank.model.AccountResponse;
-import com.nttdatabank.model.AccountUpdateRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;

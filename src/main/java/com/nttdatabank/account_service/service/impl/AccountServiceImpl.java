@@ -1,13 +1,9 @@
 package com.nttdatabank.account_service.service.impl;
 
 import com.nttdatabank.account_service.exception.BusinessException;
-import com.nttdatabank.account_service.model.Account;
-import com.nttdatabank.account_service.model.AccountType;
+import com.nttdatabank.account_service.model.*;
 import com.nttdatabank.account_service.repository.AccountRepository;
 import com.nttdatabank.account_service.service.AccountService;
-import com.nttdatabank.model.AccountRequest;
-import com.nttdatabank.model.AccountResponse;
-import com.nttdatabank.model.AccountUpdateRequest;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
 import org.springframework.http.HttpStatus;
@@ -73,12 +69,12 @@ public class AccountServiceImpl implements AccountService {
         return accountRepository.findById(accountId)
                 .switchIfEmpty(Mono.error(new BusinessException("Cuenta no encontrada", HttpStatus.NOT_FOUND)))
                 .flatMap(account -> {
-                    account.setBalance(account.getBalance().add(amount));
-                    if (account.getType() == AccountType.SAVINGS) {
-                        account.setMonthlyMovements(account.getMonthlyMovements() + 1);
-                    }
+                    BigDecimal currentBalance = BigDecimal.valueOf(account.getBalance());
+                    BigDecimal newBalance = currentBalance.add(amount);
+                    account.setBalance(newBalance.doubleValue());
                     return accountRepository.save(account);
-                }).map(updatedAccount -> modelMapper.map(updatedAccount, AccountResponse.class));
+                })
+                .map(updatedAccount -> modelMapper.map(updatedAccount, AccountResponse.class));
     }
 
     @Override
@@ -87,10 +83,9 @@ public class AccountServiceImpl implements AccountService {
                 .switchIfEmpty(Mono.error(new BusinessException("Cuenta no encontrada", HttpStatus.NOT_FOUND)))
                 .flatMap(account -> {
                     validateWitthdrawal(account, amount);
-                    account.setBalance(account.getBalance().subtract(amount));
-                    if (account.getType() == AccountType.SAVINGS) {
-                        account.setMonthlyMovements(account.getMonthlyMovements() + 1);
-                    }
+                    BigDecimal currentBalance = BigDecimal.valueOf(account.getBalance());
+                    BigDecimal newBalance = currentBalance.subtract(amount);
+                    account.setBalance(newBalance.doubleValue());
                     return accountRepository.save(account);
                 })
                 .map(updatedAccount -> modelMapper.map(updatedAccount, AccountResponse.class));
@@ -100,7 +95,7 @@ public class AccountServiceImpl implements AccountService {
     public Mono<BigDecimal> getBalance(String accountId) {
         return accountRepository.findById(accountId)
                 .switchIfEmpty(Mono.error(new BusinessException("Cuenta no encontrada", HttpStatus.NOT_FOUND)))
-                .map(Account::getBalance);
+                .map(account -> BigDecimal.valueOf(account.getBalance()));
     }
 
     /**
@@ -122,20 +117,20 @@ public class AccountServiceImpl implements AccountService {
         switch (account.getType()) {
             case SAVINGS:
                 account.setMonthlyMovements(0);
-                account.setMaintenanceFee(BigDecimal.ZERO);
+                account.setMaintenanceFee(BigDecimal.ZERO.doubleValue());
                 break;
             case CHECKING:
-                account.setMaintenanceFee(new BigDecimal("2.50"));
+                account.setMaintenanceFee(new BigDecimal("2.50").doubleValue());
                 break;
             case FIXED_TERM:
                 account.setFixedTermWithdrawalDate(LocalDate.now().plusMonths(1));
-                account.setMaintenanceFee(BigDecimal.ZERO);
+                account.setMaintenanceFee(BigDecimal.ZERO.doubleValue());
                 break;
         }
     }
 
     private void validateWitthdrawal(Account account, BigDecimal amount) {
-        if (account.getBalance().compareTo(amount) < 0) {
+        if (account.getBalance().compareTo(amount.doubleValue()) < 0) {
             throw new BusinessException("Saldo insuficiente", HttpStatus.BAD_REQUEST);
         }
         switch (account.getType()) {
